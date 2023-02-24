@@ -10,6 +10,7 @@
 #include <chrono>
 #include <thread>
 
+
 enum EDirection : int {
     leftup,
     leftdown,
@@ -92,8 +93,9 @@ class Pong {
         void setBallToStartPosition_();
         void showScore_();
         void updatePlatformPosition_();
-        void setPlatformToStartPosition_();
+        void setPlatformToPosition_(const Position& pos1, const Position& pos2);
         bool doesSomeoneWon_();
+        std::pair<Position, Position> processKeys_();
         
 
     private:
