@@ -2,5 +2,7 @@
 
 int main() {
     Pong pong;
+    std::thread processKeysThread(&Pong::processKeys, &pong);
     pong.gameStart();
+    processKeysThread.detach();
 }

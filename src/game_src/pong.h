@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <chrono>
 #include <thread>
+#include <mutex>
 
 
 enum EDirection : int {
@@ -41,39 +42,39 @@ static constexpr char symBall = '@';
 static constexpr char symPlatform = '*';
 
 static constexpr int defTimeout = 100;
-static constexpr int maxScore = 2;
+static constexpr int maxScore = 10;
 static constexpr std::pair<int, int> fieldSize(20, 100);
-static const Position player1DefPlatformPosition = Position(3, 10);
-static const Position player2DefPlatformPosition = Position(96, 10);
+static const Position player1DefPlatformPosition = Position(2, 10);
+static const Position player2DefPlatformPosition = Position(97, 10);
 
 
 static const std::string player1WinMessage =
-"╔═══╦╗─╔══╦╗╔╦═══╦═══╗\n\
-║╔═╗║║─║╔╗║║║║╔══╣╔═╗║\n\
-║╚═╝║║─║╚╝║╚╝║╚══╣╚═╝║\n\
-║╔══╣║─║╔╗╠═╗║╔══╣╔╗╔╝\n\
-║║──║╚═╣║║║╔╝║╚══╣║║║\n\
-╚╝──╚══╩╝╚╝╚═╩═══╩╝╚╝\n\
-─╔╗──╔╗╔╗╔╦══╦╗─╔╦══╗\n\
-╔╝║──║║║║║╠╗╔╣╚═╝║╔═╝\n\
-╚╗║──║║║║║║║║║╔╗─║╚═╗\n\
-─║║──║║║║║║║║║║╚╗╠═╗║\n\
-─║║──║╚╝╚╝╠╝╚╣║─║╠═╝║\n\
-─╚╝──╚═╝╚═╩══╩╝─╚╩══╝\n";
+"\t\t\t╔═══╦╗─╔══╦╗╔╦═══╦═══╗\n\
+\t\t\t║╔═╗║║─║╔╗║║║║╔══╣╔═╗║\n\
+\t\t\t║╚═╝║║─║╚╝║╚╝║╚══╣╚═╝║\n\
+\t\t\t║╔══╣║─║╔╗╠═╗║╔══╣╔╗╔╝\n\
+\t\t\t║║──║╚═╣║║║╔╝║╚══╣║║║\n\
+\t\t\t╚╝──╚══╩╝╚╝╚═╩═══╩╝╚╝\n\
+\t\t\t─╔╗──╔╗╔╗╔╦══╦╗─╔╦══╗\n\
+\t\t\t╔╝║──║║║║║╠╗╔╣╚═╝║╔═╝\n\
+\t\t\t╚╗║──║║║║║║║║║╔╗─║╚═╗\n\
+\t\t\t─║║──║║║║║║║║║║╚╗╠═╗║\n\
+\t\t\t─║║──║╚╝╚╝╠╝╚╣║─║╠═╝║\n\
+\t\t\t─╚╝──╚═╝╚═╩══╩╝─╚╩══╝\n";
 
 static const std::string player2WinMessage = 
-"╔═══╦╗─╔══╦╗╔╦═══╦═══╗\n\
-║╔═╗║║─║╔╗║║║║╔══╣╔═╗║\n\
-║╚═╝║║─║╚╝║╚╝║╚══╣╚═╝║\n\
-║╔══╣║─║╔╗╠═╗║╔══╣╔╗╔╝\n\
-║║──║╚═╣║║║╔╝║╚══╣║║║\n\
-╚╝──╚══╩╝╚╝╚═╩═══╩╝╚╝\n\
-╔══╗──╔╗╔╗╔╦══╦╗─╔╦══╗\n\
-╚═╗║──║║║║║╠╗╔╣╚═╝║╔═╝\n\
-╔═╝║──║║║║║║║║║╔╗─║╚═╗\n\
-║╔═╝──║║║║║║║║║║╚╗╠═╗║\n\
-║╚═╗──║╚╝╚╝╠╝╚╣║─║╠═╝║\n\
-╚══╝──╚═╝╚═╩══╩╝─╚╩══╝\n";
+"\t\t\t╔═══╦╗─╔══╦╗╔╦═══╦═══╗\n\
+\t\t\t║╔═╗║║─║╔╗║║║║╔══╣╔═╗║\n\
+\t\t\t║╚═╝║║─║╚╝║╚╝║╚══╣╚═╝║\n\
+\t\t\t║╔══╣║─║╔╗╠═╗║╔══╣╔╗╔╝\n\
+\t\t\t║║──║╚═╣║║║╔╝║╚══╣║║║\n\
+\t\t\t╚╝──╚══╩╝╚╝╚═╩═══╩╝╚╝\n\
+\t\t\t╔══╗──╔╗╔╗╔╦══╦╗─╔╦══╗\n\
+\t\t\t╚═╗║──║║║║║╠╗╔╣╚═╝║╔═╝\n\
+\t\t\t╔═╝║──║║║║║║║║║╔╗─║╚═╗\n\
+\t\t\t║╔═╝──║║║║║║║║║║╚╗╠═╗║\n\
+\t\t\t║╚═╗──║╚╝╚╝╠╝╚╣║─║╠═╝║\n\
+\t\t\t╚══╝──╚═╝╚═╩══╩╝─╚╩══╝\n";
 
 
 
@@ -83,6 +84,7 @@ class Pong {
         ~Pong() = default;
 
         void gameStart();
+        void processKeys();
 
     private:
         void initGameField_(std::pair<int, int> fieldSize);
@@ -95,8 +97,8 @@ class Pong {
         void updatePlatformPosition_();
         void setPlatformToPosition_(const Position& pos1, const Position& pos2);
         bool doesSomeoneWon_();
-        std::pair<Position, Position> processKeys_();
-        
+        void movePlatformSafe_(Position& pos, char direction);
+
 
     private:
         s21::Matrix<char> m_gameField;
@@ -107,7 +109,7 @@ class Pong {
         // defines the x and y of center of platform
         Position m_player1PlatformPos;
         Position m_player2PlatformPos;
-
+        std::mutex m_mutex;
 
 };
 

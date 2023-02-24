@@ -5,38 +5,55 @@ Pong::Pong() {
 }
 
 void Pong::gameStart() {
-    Position player1;
-    Position player2;
-    while (true) {
-        if (doesSomeoneWon_()) {
-            break;
-        }
-        auto new_poss = processKeys_();
-        setPlatformToPosition_(player1, player2);
-        updateBallPosition_();
+    bool isGameOver = false;
+    while (!isGameOver) {
         checkGoal_();
         checkCollision_();
+        updateBallPosition_();
         system("clear");
         showScore_();
+        std::cout << "Player1 rocket pos - " << m_player1PlatformPos.y;
+        std::cout << "\t\t\tPlayer2 rocket pos - " << m_player2PlatformPos.y << std::endl;
+        std::cout << "Ball position x = " << m_ballPosition.x << " y = " << m_ballPosition.y << std::endl;
         m_gameField.OutputMatrix(true);
         std::this_thread::sleep_for(std::chrono::milliseconds(defTimeout));
+        isGameOver = doesSomeoneWon_();
     }
 }
 
-std::pair<Position, Position> Pong::processKeys_() {
-    char key = getchar();
-    Position player1 = m_player1PlatformPos;
-    Position player2 = m_player2PlatformPos;
-    if (key == 'A' || key == 'a') {
-        player1.y--;
-    } else if (key == 'z' || key == 'Z') {
-        player1.y++;
-    } else if (key == 'k' || key == 'K') {
-        player2.y--;
-    } else if (key == 'm' || key == 'M') {
-        player2.y++;
+void Pong::processKeys() {
+    while (true) {
+        char key = '0';
+        key = (char)Helper::getch();
+        Position player1 = m_player1PlatformPos;
+        Position player2 = m_player2PlatformPos;
+        if (key == 'A' || key == 'a') {
+            movePlatformSafe_(player1, '-');
+        } 
+        else if (key == 'z' || key == 'Z') {
+            movePlatformSafe_(player1, '+');
+        } 
+        else if (key == 'k' || key == 'K') {
+            movePlatformSafe_(player2, '-');
+        } 
+        else if (key == 'm' || key == 'M') {
+            movePlatformSafe_(player2, '+');
+        }
+        setPlatformToPosition_(player1, player2);
     }
-    return {player1, player2};
+}
+
+void Pong::movePlatformSafe_(Position& pos, char direction) {
+    if (direction == '-') {
+        if (pos.y - 2 != 1) {
+            pos.y--;
+        }
+    }
+    else if (direction == '+') {
+        if (pos.y + 2 != 18) {
+            pos.y++;
+        }
+    }
 }
 
 bool Pong::doesSomeoneWon_() {
@@ -44,7 +61,8 @@ bool Pong::doesSomeoneWon_() {
         system("clear");
         std::cout << player1WinMessage;
         return true;
-    } else if (m_goalScore.player2 > maxScore) {
+    } 
+    else if (m_goalScore.player2 > maxScore) {
         system("clear");
         std::cout << player2WinMessage;
         return true;
@@ -62,8 +80,8 @@ void Pong::initGameField_(std::pair<int, int> fieldSize) {
                 m_gameField(i, j) = symVertical;
             else
                 m_gameField(i, j) = symEmpty;
-    m_ballStartPosition = m_ballPosition = Position(m_gameField.GetRows() / 2,
-                              m_gameField.GetCols() / 2);
+    m_ballStartPosition = m_ballPosition = Position(m_gameField.GetRows() / 2 + 1,
+                              m_gameField.GetCols() / 2 + 1);
     
     m_gameField(m_ballPosition.x, m_ballPosition.y) = symBall;
     createPlatforms_();
@@ -85,13 +103,16 @@ void Pong::updateBallPosition_() {
     if (m_ballDirection == EDirection::leftdown) {
         m_ballPosition.x++;
         m_ballPosition.y--;
-    } else if (m_ballDirection == EDirection::leftup) {
+    } 
+    else if (m_ballDirection == EDirection::leftup) {
         m_ballPosition.x--;
         m_ballPosition.y--;
-    } else if (m_ballDirection == EDirection::rightdown) {
+    } 
+    else if (m_ballDirection == EDirection::rightdown) {
         m_ballPosition.x++;
         m_ballPosition.y++;
-    } else if (m_ballDirection == EDirection::rightup) {
+    } 
+    else if (m_ballDirection == EDirection::rightup) {
         m_ballPosition.x--;
         m_ballPosition.y++;
     }
@@ -99,32 +120,41 @@ void Pong::updateBallPosition_() {
 }
 
 void Pong::checkCollision_() {
+    // upper and lower walls collision
     if (m_ballPosition.x == 1) {
         if (m_ballDirection == EDirection::leftup) {
             m_ballDirection = EDirection::leftdown;
-        } else if (m_ballDirection == EDirection::rightup) {
+        }
+        else if (m_ballDirection == EDirection::rightup) {
             m_ballDirection = EDirection::rightdown;
         }
-    } else if (m_ballPosition.x == m_gameField.GetRows() - 2) {
+    }
+    else if (m_ballPosition.x == m_gameField.GetRows() - 2) {
         if (m_ballDirection == EDirection::leftdown) {
             m_ballDirection = EDirection::leftup;
-        } else if (m_ballDirection == EDirection::rightdown) {
+        }
+        else if (m_ballDirection == EDirection::rightdown) {
             m_ballDirection = EDirection::rightup;
         }
-    } else if (m_ballPosition.y == 4 &&
+    // rockets collision
+    }
+    else if (m_ballPosition.y == 4 &&
             m_ballPosition.x >= m_player1PlatformPos.x - 2 &&
             m_ballPosition.x <= m_player1PlatformPos.x + 2) {
         if (m_ballDirection == EDirection::leftdown) {
             m_ballDirection = EDirection::rightdown;
-        } else if (m_ballDirection == EDirection::leftup) {
+        }
+        else if (m_ballDirection == EDirection::leftup) {
             m_ballDirection = EDirection::rightup;
         }
-    } else if (m_ballPosition.y == 95 &&
+    }
+    else if (m_ballPosition.y == 95 &&
             m_ballPosition.x >= m_player2PlatformPos.x - 2 &&
             m_ballPosition.x <= m_player2PlatformPos.x + 2) {
         if (m_ballDirection == EDirection::rightdown) {
             m_ballDirection = EDirection::leftdown;
-        } else if (m_ballDirection == EDirection::rightup) {
+        }
+        else if (m_ballDirection == EDirection::rightup) {
             m_ballDirection = EDirection::leftup;
         }
     }
@@ -134,6 +164,7 @@ void Pong::setBallToStartPosition_() {
     m_gameField(m_ballPosition.x, m_ballPosition.y) = symEmpty;
     m_ballPosition = m_ballStartPosition;
     m_gameField(m_ballPosition.x, m_ballPosition.y) = symBall;
+    m_ballDirection = leftup;
 }
 
 void Pong::setPlatformToPosition_(const Position& pos1, const Position& pos2) {
@@ -156,7 +187,8 @@ void Pong::checkGoal_() {
         m_goalScore.player2++;
         setBallToStartPosition_();
         setPlatformToPosition_(player1DefPlatformPosition, player2DefPlatformPosition);
-    } else if (m_ballPosition.y == m_gameField.GetCols() - 2) {
+    } 
+    else if (m_ballPosition.y == m_gameField.GetCols() - 2) {
         m_goalScore.player1++;
         setBallToStartPosition_();
         setPlatformToPosition_(player1DefPlatformPosition, player2DefPlatformPosition);
